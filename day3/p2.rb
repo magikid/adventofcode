@@ -2,6 +2,7 @@
 
 class Request
   attr_reader :left, :top, :width, :height
+  attr_accessor :overlapped
   def initialize(request_string)
     match = /#(?<request>\d+) @ (?<left>\d+),(?<top>\d+): (?<width>\d+)x(?<height>\d+)/.match(request_string)
     @request = match[:request]
@@ -9,6 +10,7 @@ class Request
     @top = match[:top].to_i
     @width = match[:width].to_i
     @height = match[:height].to_i
+    @overlapped = false
   end
 
   def height_range
@@ -37,22 +39,14 @@ end
 
 class Cell
   attr_accessor :count, :requests
+  attr_reader :overlapped
   def initialize
     @count = 0
     @requests = Array.new
   end
   
-  def add(req)
-    @count += 1
-    @requests << req
-  end
-
-  def overlapped
-    @requests.length > 1
-  end
-
   def to_s
-    "#{@count} #{@requests.map{|req| req.to_s}.join("\n")}"
+    "cell #{@count} #{@requests.map{|req| req.to_s}.join("\n")}"
   end
 end
 
@@ -67,9 +61,13 @@ fabric_cells = Array.new(array_size){ Array.new(array_size){Cell.new} }
 requests.each do |request|
   request.height_range.each do |row|
     request.width_range.each do |col|
-      fabric_cells[row][col].add(request)
+      fabric_cells[row][col].requests << request
+      fabric_cells[row][col].count += 1
+      if fabric_cells[row][col].requests.length > 1
+        fabric_cells[row][col].requests.each{|req| req.overlapped = true}
+      end
     end
   end
 end
 
-puts fabric_cells.flatten.select{|cell| cell.count == 1 and cell.requests.length == 1}
+puts fabric_cells.flatten.select{|cell| cell.count == 1}.map(&:requests).select{|req| !req[0].overlapped}[0]
