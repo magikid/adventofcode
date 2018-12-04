@@ -24,13 +24,27 @@ class Request
   end
 end
 
+def fabric_print(fabric)
+  output = ""
+  fabric.each do |row|
+    row.each do |col|
+      output += "#{col} "
+    end
+    output += "\n"
+  end
+  print output
+end
+
 class Cell
   attr_accessor :count, :requests
-
   def initialize
     @count = 0
-    @requests = []
-    @overlapped = false
+    @requests = Array.new
+  end
+  
+  def add(req)
+    @count += 1
+    @requests << req
   end
 
   def overlapped
@@ -38,12 +52,8 @@ class Cell
   end
 
   def to_s
-    "#{@count} #{@requests.map(&:to_s).join("\n")}"
+    "#{@count} #{@requests.map{|req| req.to_s}.join("\n")}"
   end
-end
-
-def fabric_print(fabric)
-  print fabric.reduce(""){|final, cur| final += cur.reduce(""){|final, cur| final += "#{cur.count} "} + "\n"}
 end
 
 input = File.readlines("p1_input.txt")
@@ -52,15 +62,14 @@ requests = input.map{|line| Request.new(line)}
 max_rows = requests.map{|req| req.top + req.height}.max
 max_cols = requests.map{|req| req.left + req.width}.max
 array_size = [max_rows, max_cols].max + 1
-fabric = Array.new(array_size){ Array.new(array_size, Cell.new) }
+puts "Array size: #{array_size}x#{array_size}"
+fabric_cells = Array.new(array_size){ Array.new(array_size){Cell.new} }
 requests.each do |request|
   request.height_range.each do |row|
     request.width_range.each do |col|
-      fabric[row][col].count += 1
-      fabric[row][col].requests << request
+      fabric_cells[row][col].add(request)
     end
   end
 end
 
-#puts fabric.flatten.map(&:count).sort.uniq.max
-puts fabric.flatten.select{|cell| cell.count < 27 }
+puts fabric_cells.flatten.select{|cell| cell.count == 1 and cell.requests.length == 1}
