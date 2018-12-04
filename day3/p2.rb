@@ -39,35 +39,53 @@ end
 
 class Cell
   attr_accessor :count, :requests
-  attr_reader :overlapped
   def initialize
     @count = 0
     @requests = Array.new
   end
-  
+
   def to_s
-    "cell #{@count} #{@requests.map{|req| req.to_s}.join("\n")}"
+    "Cell: #{@count} equests\n=============\n#{@requests.map{|req| req.to_s}.join("\n")}"
   end
 end
 
+# Parse the input file into requests
 input = File.readlines("p1_input.txt")
-#input = File.readlines("p1_test.txt")
 requests = input.map{|line| Request.new(line)}
+
+# We want to make a NxN matrix.  This figures out the N we need by 
+# taking the largest diminsion in the data.
 max_rows = requests.map{|req| req.top + req.height}.max
 max_cols = requests.map{|req| req.left + req.width}.max
 array_size = [max_rows, max_cols].max + 1
-puts "Array size: #{array_size}x#{array_size}"
+
+# Create the matrix at the correct size and set the default value to a
+# new cell which lets us count and store requests for each cell.
 fabric_cells = Array.new(array_size){ Array.new(array_size){Cell.new} }
+
+# Loop through each request and mark the fabric where each request
+# would take up space by adding one for each request of a given square
+# inch.  Also, store the requests for each square inch and the requests
+# if they overlap with another request.
 requests.each do |request|
   request.height_range.each do |row|
     request.width_range.each do |col|
       fabric_cells[row][col].requests << request
       fabric_cells[row][col].count += 1
-      if fabric_cells[row][col].requests.length > 1
+      if fabric_cells[row][col].count > 1
         fabric_cells[row][col].requests.each{|req| req.overlapped = true}
       end
     end
   end
 end
 
-puts fabric_cells.flatten.select{|cell| cell.count == 1}.map(&:requests).select{|req| !req[0].overlapped}[0]
+# For the answer, we no longer care about diminsions so flatten the
+# array.  Select only cells that have a count of because the area of
+# fabric that has no overlap will have a count of 1 for the entire
+# region.  Once we have only cells with only a single request, select
+# the cell that doesn't have any overlap.
+puts fabric_cells
+  .flatten
+  .select{|cell| cell.count == 1}
+  .select{|cell| !cell.requests.first.overlapped}
+  .first
