@@ -87,17 +87,23 @@ days_shifts.each_pair do |day, lines|
       log "new guard: #{current_guard}"
       line_offset += 1
     else
-      start = lines[line_offset].date.min
-      finish = lines[line_offset+1].date.min
-      shift = Shift.new(current_guard, start, finish, day)
-      guard_sleep_total[shift.guard] += shift.duration
-      guard_shifts << shift
-      line_offset += 2
+      begin
+        start = lines[line_offset].date.min
+        finish = lines[line_offset+1].date.min
+        shift = Shift.new(current_guard, start, finish, day)
+        guard_sleep_total[shift.guard] += shift.duration
+        guard_shifts << shift
+        log shift
+        line_offset += 2
+      rescue NoMethodError
+        line_offset += 1
+      end
     end
   end
 end
 
-sleepiest_guard = guard_sleep_total.sort{|a,b| a[1] <=> b[1]}.last[0]
+sleepiest_guard = guard_sleep_total.sort{|a,b| b[1] <=> a[1]}.first[0]
+log guard_sleep_total.sort{|a,b| b[1] <=> a[1]}.map{|g| "guard #{g[0]} minutes #{g[1]}"}
 puts "Sleepiest guard: guard ##{sleepiest_guard}"
 
 sleep_times = Hash.new{|hash,key| hash[key] = Hash.new(0)}
