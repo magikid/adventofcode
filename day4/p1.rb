@@ -19,7 +19,7 @@ class LogLine
 
     guard_check = GUARD_REGEX.match(@log_line)
     if guard_check
-      @guard_id ||= guard_check[:id].to_sym
+      @guard_id ||= guard_check[:id].to_i
       @guard = true
     else
       @guard_id = 0
@@ -55,14 +55,18 @@ class LogLine
 end
 
 class Shift
-  attr_reader :guard, :start, :end, :duration
+  attr_reader :guard, :start, :end, :duration, :day
 
-  def initialize(guard_id, log_start, log_end)
+  def initialize(guard_id, log_start, log_end, day)
+    @day = day
     @guard = guard_id
     @start = log_start
-    @end = log_end
+    @end = log_end - 1
     @duration = @end - @start
-    log "guard #{@guard} asleep #{@duration} mins"
+  end
+
+  def to_s
+    "guard #{@guard} on #{@day} asleep #{@start}-#{@end} total #{@duration}"
   end
 end
 
@@ -72,6 +76,7 @@ log_lines = File.readlines(input).map{|line| LogLine.new(line)}.sort
 log log_lines
 
 guard_sleep_total = Hash.new(0)
+guard_shifts = []
 days_shifts = log_lines.group_by{|line| line.date.to_date.iso8601}
 days_shifts.each_pair do |day, lines|
   line_offset = 0
@@ -84,8 +89,9 @@ days_shifts.each_pair do |day, lines|
     else
       start = lines[line_offset].date.min
       finish = lines[line_offset+1].date.min
-      shift = Shift.new(current_guard, start, finish)
+      shift = Shift.new(current_guard, start, finish, day)
       guard_sleep_total[shift.guard] += shift.duration
+      guard_shifts << shift
       line_offset += 2
     end
   end
@@ -93,3 +99,14 @@ end
 
 sleepiest_guard = guard_sleep_total.sort{|a,b| a[1] <=> b[1]}.last[0]
 puts "Sleepiest guard: guard ##{sleepiest_guard}"
+
+sleep_times = Hash.new{|hash,key| hash[key] = Hash.new(0)}
+guard_shifts.group_by(&:day).each_pair do |day, shifts|
+  shifts.each do |shift|
+    (shift.start..shift.end).each{|n| sleep_times[shift.guard][n] += 1}
+  end
+end
+
+sleepiest_min = sleep_times[sleepiest_guard].sort{|a,b| b[1] <=> a[1]}.first.first
+puts "Sleepiest minute: minute #{sleepiest_min}"
+puts "Answer: #{sleepiest_guard} * #{sleepiest_min} = #{sleepiest_guard*sleepiest_min}"
